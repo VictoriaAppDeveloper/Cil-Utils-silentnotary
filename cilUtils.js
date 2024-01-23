@@ -10,7 +10,7 @@ const sleep = (delay) => {
   });
 };
 
-// на сколько частей побить сумму (для того, чтобы не ждать стабильности блоков)
+
 const NUM_OF_OUTPUTS = 20;
 
 class CilUtils {
@@ -78,7 +78,7 @@ class CilUtils {
       nTotalSent += nAmount;
       strAddr = this.stripAddressPrefix(strAddr);
 
-      // разобьем сумму на numOfOutputs выходов, чтобы не блокировало переводы
+      
       for (let i = 0; i < numOfOutputs; i++) {
         tx.addReceiver(parseInt(nAmount / numOfOutputs), Buffer.from(strAddr, 'hex'));
       }
@@ -87,7 +87,7 @@ class CilUtils {
     // ConciliumId
     if (nConciliumId) tx.conciliumId = nConciliumId;
 
-    // сдача есть?
+    
     let fee = this.calculateTxFee(tx, false, true);
     let change = gatheredAmount - nTotalSent - (manualFee ? manualFee : fee);
     if (change > 0) {
@@ -170,7 +170,7 @@ class CilUtils {
   /**
    *
    * @param strTxHash
-   * @param bContractCall - если это вызов контракта, то в эксплорере будет internalTx
+   * @param bContractCall 
    * @returns {Promise<boolean>}
    */
   async isTxDoneExplorer(strTxHash, bContractCall) {
@@ -282,7 +282,7 @@ class CilUtils {
    *
    * @param {Number} nInputsCount
    * @param {Number} nOutputsCount
-   * @param {Boolean} bOneSignature - будет подписано 1 приватником?
+   * @param {Boolean} bOneSignature 
    * @returns {number}
    */
   estimateTxFee(nInputsCount, nOutputsCount, bOneSignature) {
