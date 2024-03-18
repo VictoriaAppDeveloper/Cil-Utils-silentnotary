@@ -10,7 +10,7 @@ const sleep = (delay) => {
   });
 };
 
-// на сколько частей побить сумму (для того, чтобы не ждать стабильности блоков)
+
 const NUM_OF_OUTPUTS = 20;
 
 class CilUtils {
@@ -186,7 +186,7 @@ class CilUtils {
     if (nConciliumId) tx.conciliumId = nConciliumId;
 
     // сдача есть?
-    let fee = this._estimateTxFee(tx.inputs.length, tx.outputs.length, true);
+    let fee = this.calculateTxFee(tx, false, true);
     let change = gatheredAmount - nTotalSent - (manualFee ? manualFee : fee);
     if (change > 0) {
       fee = this._estimateTxFee(tx.inputs.length, tx.outputs.length+1, true);
