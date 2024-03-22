@@ -90,9 +90,19 @@ class CilUtils {
    * @returns {Promise<Transaction>} You can send it via sendTx
    */
   async createSendCoinsTx(arrReceivers, nConciliumId = 1) {
-    const nTotalToSend = arrReceivers.reduce((accum, [, nAmountToSend]) => accum + nAmountToSend, 0);
+    let bSweep = false;
+    let nTotalToSend = 0;
+    for (let [, nAmountToSend] of arrReceivers) {
+      if (nAmountToSend < 0) bSweep = true;
+
+      // nTotalToSend wouldn't be used for sweep scenario
+      nTotalToSend += nAmountToSend;
+    }
     const arrUtxos = await this.getUtxos();
-    const {arrCoins, gathered} = await this.gatherInputsForAmount(arrUtxos, nTotalToSend);
+    const {arrCoins, gathered} = bSweep ?
+      ({arrCoins: arrUtxos}) :
+      await this.gatherInputsForAmount(arrUtxos, nTotalToSend);
+
     const tx = await this.createTxWithFunds({
       arrReceivers,
       nConciliumId,
@@ -162,47 +172,45 @@ class CilUtils {
       gatheredAmount = arrCoins.reduce((accum, current) => accum + current.amount, 0);
     }
 
-    if(arrReceivers.length === 1 && arrReceivers[0][1] === -1){
-      // sweep scenario
-      arrReceivers[0][1] = gatheredAmount - this._estimateTxFee(arrCoins.length, 1, true);
-      numOfOutputs=1;
+    let nTotalToSend = 0;
+    let nChangeReceivers = 0;
+    for (let [, nAmountToSend] of arrReceivers) {
+      if (nAmountToSend < 0) {
+        nChangeReceivers++;
+      } else {
+        nTotalToSend += nAmountToSend;
+      }
     }
 
-    let nTotalSent = 0;
+    // estimate fees
+    const nTxOutputs = (arrReceivers.length - nChangeReceivers) * numOfOutputs + nChangeReceivers;
+    const nFee = manualFee ? manualFee : this._estimateTxFee(arrCoins.length, nTxOutputs, true);
+    const nChange = gatheredAmount - nTotalToSend - nFee;
+
     const tx = new factory.Transaction();
     await this._addInputs(tx, arrCoins);
 
     for (let [strAddr, nAmount] of arrReceivers) {
-      nTotalSent += nAmount;
       strAddr = this.stripAddressPrefix(strAddr);
 
-      // разобьем сумму на numOfOutputs выходов, чтобы не блокировало переводы
-      for (let i = 0; i < numOfOutputs; i++) {
-        tx.addReceiver(parseInt(nAmount / numOfOutputs), Buffer.from(strAddr, 'hex'));
+      if (nAmount < 0) {
+        tx.addReceiver(parseInt(nChange / nChangeReceivers), Buffer.from(strAddr, 'hex'));
+      } else {
+
+        // разобьем сумму на numOfOutputs выходов, чтобы не блокировало переводы
+        for (let i = 0; i < numOfOutputs; i++) {
+          tx.addReceiver(parseInt(nAmount / numOfOutputs), Buffer.from(strAddr, 'hex'));
+        }
       }
+    }
+    if (!nChangeReceivers && nChange) {
+      const nFeeAdjusted = manualFee ? manualFee : this._estimateTxFee(arrCoins.length, tx.outputs.length + 1, true);
+      tx.addReceiver(gatheredAmount - nTotalToSend - nFeeAdjusted, this._kpFunds.address);
     }
 
     // ConciliumId
     if (nConciliumId) tx.conciliumId = nConciliumId;
-
-    // сдача есть?
-    let fee = this.calculateTxFee(tx, false, true);
-    let change = gatheredAmount - nTotalSent - (manualFee ? manualFee : fee);
-    if (change > 0) {
-      fee = this._estimateTxFee(tx.inputs.length, tx.outputs.length+1, true);
-      change = gatheredAmount - nTotalSent - (manualFee ? manualFee : fee);
-
-      if (change > 0) tx.addReceiver(change, Buffer.from(this._kpFunds.address, 'hex'));
-    }
-
-    // for single PK scenario it's allowed to use single claimProof in txSignature
-    if (tx.inputs.length > 1) {
-      tx.signForContract(this._kpFunds.privateKey);
-    } else {
-      for (let i in tx.inputs) {
-        tx.claim(parseInt(i), this._kpFunds.privateKey);
-      }
-    }
+    tx.signForContract(this._kpFunds.privateKey);
 
     return tx;
   }
@@ -420,6 +428,10 @@ class CilUtils {
 
   _getTransferFee (){
     return factory.Constants.fees.TX_FEE;
+  }
+
+  calculateTxFee(tx, bWithChange = true, bOneSignature = true) {
+    return this._estimateTxFee(tx.inputs.length, tx.outputs.length, bOneSignature);
   }
 
   /**

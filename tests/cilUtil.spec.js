@@ -1,5 +1,6 @@
 'use strict';
 
+const Buffer = require("buffer/").Buffer;
 const {describe, it} = require('mocha');
 const chai = require('chai');
 const sinon = require('sinon');
@@ -103,7 +104,7 @@ describe('CilUtils', () => {
 
   });
 
-  describe('createSendCoinsTx', () => {
+  describe('createTxWithFunds', () => {
 
     it('should createTxWithFunds (two input and change)', async () => {
       const amount = 499986000;
@@ -230,7 +231,7 @@ describe('CilUtils', () => {
 
       const tx = await utils.createTxWithFunds({
         arrCoins,
-        // nOutputs will be ignored in sweep scenario
+        // nOutputs will be ignored in sweep scenario with single receiver
         nOutputs: 10,
         arrReceivers: [
           ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', -1],
@@ -246,6 +247,76 @@ describe('CilUtils', () => {
       console.log(2 * amount - utils._estimateTxFee(2, 1, true));
     });
 
+    it('should createTxWithFunds (sweep scenario 1 change receivers)', async () => {
+      const amount = 1e4;
+      const arrCoins = [
+        {
+          "hash": "13252b7f61784f4d45740c38b4bbf15629e066b198c70b54a05af6f006b5b6c2",
+          "nOut": 1,
+          "amount": amount,
+          "isStable": true
+        },
+        {
+          "hash": "21e8bdbee170964d36fcabe4e071bc14933551b9c2b031770ce73ba973bc4dd7",
+          "nOut": 1,
+          "amount": amount,
+          "isStable": true
+        }];
+
+      const tx = await utils.createTxWithFunds({
+        arrCoins,
+        nOutputs: 10,
+        arrReceivers: [
+          ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', -1],
+          ['a'.repeat(40), amount]
+        ]
+      });
+
+      assert.isOk(tx);
+      assert.equal(tx.inputs.length, 2);
+      assert.equal(tx.outputs.length, 11);
+
+      // -1 = parseInt influence
+      assert.equal(tx.amountOut(), 2 * amount - utils._estimateTxFee(2, 11, true));
+    });
+
+    it('should createTxWithFunds (sweep scenario: 2 change receivers)', async () => {
+      const amount = 1e4;
+      const arrCoins = [
+        {
+          "hash": "13252b7f61784f4d45740c38b4bbf15629e066b198c70b54a05af6f006b5b6c2",
+          "nOut": 1,
+          "amount": amount,
+          "isStable": true
+        },
+        {
+          "hash": "21e8bdbee170964d36fcabe4e071bc14933551b9c2b031770ce73ba973bc4dd7",
+          "nOut": 1,
+          "amount": amount,
+          "isStable": true
+        }];
+
+      const tx = await utils.createTxWithFunds({
+        arrCoins,
+        nOutputs: 10,
+        arrReceivers: [
+          ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', -1],
+          ['a'.repeat(40), amount],
+          ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', -1]
+        ]
+      });
+
+      assert.isOk(tx);
+      assert.equal(tx.inputs.length, 2);
+      assert.equal(tx.outputs.length, 12);
+
+      // -1 is parseInt influence
+      assert.equal(tx.amountOut(), 2 * amount - 1 - utils._estimateTxFee(2, 12, true));
+      console.log(2 * amount - 1 - utils._estimateTxFee(2, 1, true));
+    });
+  });
+
+  describe('createSend*Tx', () => {
     it('should createSendCoinsTx (two receivers + change)', async () => {
       const amount = 1e5;
       const arrCoins = [
@@ -263,16 +334,64 @@ describe('CilUtils', () => {
         }];
 
       utils.queryApi = sinon.fake.resolves(arrCoins);
+      const arrReceivers = [
+        ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', parseInt(amount - amount / 3)],
+        ['Ux00c4cfe96bd4e2a3df3d5115b75557b9f05d4b00', parseInt(amount - amount / 3)]
+      ];
 
-      const tx = await utils.createSendCoinsTx([
-          ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', parseInt(amount - amount / 3)],
-          ['Ux00c4cfe96bd4e2a3df3d5115b75557b9f05d4b00', parseInt(amount - amount / 3)]
-        ]
-      );
+      const tx = await utils.createSendCoinsTx(arrReceivers);
 
       assert.isOk(tx);
       assert.equal(tx.inputs.length, 2);
       assert.equal(tx.outputs.length, 3);
+      assert.equal(tx.amountOut(), 2 * amount - utils._estimateTxFee(2, 3, true));
+      assert.isOk(tx.outputs[0].receiverAddr.equals(Buffer.from(arrReceivers[0][0].slice(2), 'hex')));
+      assert.isOk(tx.outputs[1].receiverAddr.equals(Buffer.from(arrReceivers[1][0].slice(2), 'hex')));
+      assert.isOk(tx.outputs[2].receiverAddr.equals(utils._kpFunds.getAddress(true)));
+    });
+
+    it('should createSendCoinsTx (two receivers + sweep)', async () => {
+      const amount = 1e5;
+      const arrCoins = [
+        {
+          "hash": "13252b7f61784f4d45740c38b4bbf15629e066b198c70b54a05af6f006b5b6c2",
+          "nOut": 1,
+          "amount": amount,
+          "isStable": true
+        },
+        {
+          "hash": "21e8bdbee170964d36fcabe4e071bc14933551b9c2b031770ce73ba973bc4dd7",
+          "nOut": 1,
+          "amount": amount,
+          "isStable": true
+        }];
+
+      utils.queryApi = sinon.fake.resolves(arrCoins);
+      const arrReceivers = [
+        ['Ux1ac4cfe96bd4e2a3df3d5115b75557b9f05d4b86', parseInt(amount / 3)],
+        ['a'.repeat(40), -1],
+        ['b'.repeat(40), -1],
+        ['Ux00c4cfe96bd4e2a3df3d5115b75557b9f05d4b00', parseInt(amount / 3)]
+      ];
+
+      const tx = await utils.createSendCoinsTx(arrReceivers);
+
+      assert.isOk(tx);
+      assert.equal(tx.inputs.length, 2);
+      assert.equal(tx.outputs.length, 4);
+      assert.equal(tx.amountOut(), 2 * amount - utils._estimateTxFee(2, 4, true));
+
+      assert.isOk(tx.outputs[0].receiverAddr.equals(Buffer.from(arrReceivers[0][0].slice(2), 'hex')));
+      assert.isOk(tx.outputs[1].receiverAddr.equals(Buffer.from(arrReceivers[1][0], 'hex')));
+      assert.isOk(tx.outputs[2].receiverAddr.equals(Buffer.from(arrReceivers[2][0], 'hex')));
+      assert.isOk(tx.outputs[3].receiverAddr.equals(Buffer.from(arrReceivers[3][0].slice(2), 'hex')));
+
+      const nChangeHalf = parseInt(
+        (2 * amount - utils._estimateTxFee(2, 4, true) - (arrReceivers[0][1] + arrReceivers[3][1])) / 2);
+      assert.equal(tx.outputs[0].amount, arrReceivers[0][1]);
+      assert.equal(tx.outputs[1].amount, nChangeHalf);
+      assert.equal(tx.outputs[2].amount, nChangeHalf);
+      assert.equal(tx.outputs[3].amount, arrReceivers[3][1]);
     });
 
     it('should createSendTokenTx', async () => {
@@ -308,32 +427,33 @@ describe('CilUtils', () => {
     it('should properly calc change', async () => {
       const amount = 4000;
       const arrUtxos = [
-          {
-            "hash": "13252b7f61784f4d45740c38b4bbf15629e066b198c70b54a05af6f006b5b6c2",
-            "nOut": 1054,
-            "amount": amount,
-            "isStable": true
-          },
-          {
-            "hash": "21e8bdbee170964d36fcabe4e071bc14933551b9c2b031770ce73ba973bc4dd7",
-            "nOut": 20,
-            "amount": amount,
-            "isStable": true
-          }];
+        {
+          "hash": "13252b7f61784f4d45740c38b4bbf15629e066b198c70b54a05af6f006b5b6c2",
+          "nOut": 1054,
+          "amount": amount,
+          "isStable": true
+        },
+        {
+          "hash": "21e8bdbee170964d36fcabe4e071bc14933551b9c2b031770ce73ba973bc4dd7",
+          "nOut": 20,
+          "amount": amount,
+          "isStable": true
+        }];
 
-      utils.getUtxos=sinon.fake.resolves(arrUtxos);
+      utils.getUtxos = sinon.fake.resolves(arrUtxos);
 
       const tx = await utils.createSendCoinsTx([
-        ['a'.repeat(40), parseInt(amount/4)],
-        ['b'.repeat(40), parseInt(amount/4)],
+        ['a'.repeat(40), parseInt(amount / 4)],
+        ['b'.repeat(40), parseInt(amount / 4)]
       ]);
 
       assert.equal(tx.inputs.length, 1);
       assert.equal(tx.outputs.length, 3);
       assert.equal(utils._getTransferFee(), 4000);
       const txCost = utils._estimateTxFee(1, 3, true);
-      assert.equal(tx.outputs[2].amount, amount - 2*parseInt(amount/4) - txCost);
+      assert.equal(tx.outputs[2].amount, amount - 2 * parseInt(amount / 4) - txCost);
     });
+
   });
 
   describe('waitTxDone', async () => {
