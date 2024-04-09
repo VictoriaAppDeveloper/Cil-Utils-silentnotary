@@ -102,26 +102,30 @@ async function main() {
   await didUtils.asyncLoaded();
 
   // добавление нового провайдера DID
-  const didProviderTX = await didUtils.performDIDOperation(
-      'addProvider',
-      ['tw'],
-      '44abd42dcd3d3def73dbf9aac211d9a966e653b4',
-      200000,
-      20000,
-      1
+  const didProviderTX = await didUtils.createTxWithContract(
+    {
+      method: 'addProvider',
+      arrArguments: ['tw']
+    },
+    '44abd42dcd3d3def73dbf9aac211d9a966e653b4',
+    200000,
+    20000,
+    1
   )
   await didUtils.sendTx(didProviderTX);
   await didUtils.waitTxDoneExplorer(didProviderTX.getHash(), 600, false);
   console.log(didProviderTX.getHash(), 'Хэш транзакции (добавление провайдера DID)');
 
   // создание привязки DID
-  const createDIDTX = await didUtils.performDIDOperation(
-      'create',
-      ['tw', 'trueshura', '9dd718fff5671d6cff6be4b15fde1ea286528ea0'],
-      '44abd42dcd3d3def73dbf9aac211d9a966e653b4',
-      200000,
-      20000,
-      1
+  const createDIDTX = await didUtils.createTxWithContract(
+    {
+      method: 'create',
+      arrArguments: ['tw', 'trueshura', '9dd718fff5671d6cff6be4b15fde1ea286528ea0']
+    },
+    '44abd42dcd3d3def73dbf9aac211d9a966e653b4',
+    200000,
+    20000,
+    1
   )
   await didUtils.sendTx(createDIDTX);
   await didUtils.waitTxDoneExplorer(createDIDTX.getHash(), 600, false);

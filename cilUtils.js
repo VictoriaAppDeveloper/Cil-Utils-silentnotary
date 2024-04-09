@@ -476,25 +476,19 @@ class CilUtils {
   }
   /**
    *
-   * @param {String} sMethod
-   * @param {Array} arrArguments
+   * @param {Object} contractCode
    * @param {String} strContractAddr
    * @param {Number} nAmount
    * @param {Number} nContractAmount
    * @param {Number} nConciliumId
    * @returns {Promise<Transaction>}
    */
-  async performDIDOperation(sMethod, arrArguments, strContractAddr, nAmount, nContractAmount, nConciliumId = 1) {
-    const contractCode = {
-      method: sMethod,
-      arrArguments: arrArguments,
-    };
-
+  async createTxWithContract(contractCode, strContractAddr, nAmount, nContractAmount, nConciliumId = 1) {
     const tx = factory.Transaction.invokeContract(
-        this.stripAddressPrefix(strContractAddr),
-        contractCode,
-        nContractAmount,
-        this._kpFunds.address,
+      this.stripAddressPrefix(strContractAddr),
+      contractCode,
+      nContractAmount,
+      this._kpFunds.address
     );
 
     if (nConciliumId) tx.conciliumId = nConciliumId;
@@ -514,7 +508,6 @@ class CilUtils {
 
     return tx;
   }
-
   /**
    *
    * @param {String} sMethod
