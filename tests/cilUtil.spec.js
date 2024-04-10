@@ -700,7 +700,7 @@ describe('CilUtils', () => {
       );
 
       assert.isOk(tx);
-      assert.match(tx.conciliumId, /^0|1$/);
+      assert.equal(tx.conciliumId, 1);
       assert.equal(tx.outputs[0].amount, 20000);
       assert.equal(tx.inputs.length, 1);
       assert.oneOf(tx.inputs[0].txHash.toString('hex'), fakeUtxos.map(({ hash }) => hash));
@@ -741,7 +741,7 @@ describe('CilUtils', () => {
       assert.isOk(tx);
       assert.equal(tx.inputs.length, 1);
       assert.equal(tx.outputs[0].amount, 20000);
-      assert.match(tx.conciliumId, /^0|1$/);
+      assert.equal(tx.conciliumId, 1);
       assert.oneOf(tx.inputs[0].txHash.toString('hex'), fakeUtxos.map(({ hash }) => hash));
       assert.equal(tx.outputs.length, 2);
       assert.match(tx.outputs[0].contractCode, /create.*tw.*trueshura.*8ea0/); // contract calling
