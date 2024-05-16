@@ -5,7 +5,7 @@
   "dependencies": {
     "axios": "^1.6.2",
     "crypto-web": "github:trueshura/crypto-web",
-    "protobufjs": "^7.2.5"
+    "protobufjs": "github:VictoriaAppDeveloper/protobuf.js"
   },
   "devDependencies": {
     "axios-mock-adapter": "^1.22.0",
