@@ -1,4 +1,4 @@
-const { Root } = require("protobufjs/dist/light/protobuf.min");
+const { Root } = require("protobufjs/dist/protobuf");
 const Buffer = require("buffer/").Buffer;
 const jsonDescriptor = require("./structures.json");
 const Crypto = require("crypto-web");
