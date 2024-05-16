@@ -13,7 +13,6 @@
     "chai-as-promised": "^7.1.1",
     "command-line-args": "^5.2.1",
     "mocha": "^6.2.0",
-    "rollup-plugin-re": "^1.0.7",
     "sinon": "^7.3.2",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
